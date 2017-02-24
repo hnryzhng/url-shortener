@@ -1,84 +1,44 @@
-//
-// # SimpleServer
-//
-// A simple chat server using Socket.IO, Express, and Async.
-//
+// URL shortener server
+
+// TUTORIAL: https://coligo.io/create-url-shortener-with-node-express-mongo/
+// TUTORIAL BASIC: http://lefkowitz.me/thoughts/2016/05/05/men-stack-building-a-url-shortener-with-mongodb-express-and-node-js/
+
 var http = require('http');
+var express = require('express');
 var path = require('path');
 
-var async = require('async');
-var socketio = require('socket.io');
-var express = require('express');
+var mongo = require('mongodb').MongoCLient;
+var dburl = "mongodb://localhost:27017/urldb";
+var dbmethods = require('./dbmethods.js'); 
 
-//
-// ## SimpleServer `SimpleServer(obj)`
-//
-// Creates a new instance of SimpleServer with the following options:
-//  * `port` - The HTTP port to listen on. If `process.env.PORT` is set, _it overrides this value_.
-//
-var router = express();
-var server = http.createServer(router);
-var io = socketio.listen(server);
+var app = express();
 
-router.use(express.static(path.resolve(__dirname, 'client')));
-var messages = [];
-var sockets = [];
-
-io.on('connection', function (socket) {
-    messages.forEach(function (data) {
-      socket.emit('message', data);
-    });
-
-    sockets.push(socket);
-
-    socket.on('disconnect', function () {
-      sockets.splice(sockets.indexOf(socket), 1);
-      updateRoster();
-    });
-
-    socket.on('message', function (msg) {
-      var text = String(msg || '');
-
-      if (!text)
-        return;
-
-      socket.get('name', function (err, name) {
-        var data = {
-          name: name,
-          text: text
-        };
-
-        broadcast('message', data);
-        messages.push(data);
-      });
-    });
-
-    socket.on('identify', function (name) {
-      socket.set('name', String(name || 'Anonymous'), function (err) {
-        updateRoster();
-      });
-    });
-  });
-
-function updateRoster() {
-  async.map(
-    sockets,
-    function (socket, callback) {
-      socket.get('name', callback);
-    },
-    function (err, names) {
-      broadcast('roster', names);
+// router: shorten specified url 
+app.get('/shorten/:targeturl(*)', function (request, response, next) {
+  
+  // connect to db
+  mongo.connect(dburl, function(err, db) {
+    if (err) {
+      throw err;
+    } else {
+      console.log('connected to db');
+      // else if check if url in db (collection.findOne()) then next(), if not then insert into db
+      // dbmethods.insert(db, targeturl);
+      db.close();
     }
-  );
-}
-
-function broadcast(event, data) {
-  sockets.forEach(function (socket) {
-    socket.emit(event, data);
+    
   });
-}
-
-server.listen(process.env.PORT || 3000, process.env.IP || "0.0.0.0", function(){
-  var addr = server.address();
-  console.log("Chat server listening at", addr.address + ":" + addr.port);
+  
+  var targeturl = request.params['targeturl'];
+  
+  // response.json(jsonCollection);
+  response.end(targeturl);
+  
 });
+
+
+// router: retrieve shortened url and redirect
+// host + shortenedurl
+
+
+http.createServer(app).listen(process.env.PORT);
