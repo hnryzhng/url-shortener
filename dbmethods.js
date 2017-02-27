@@ -13,6 +13,7 @@ dbmethods.insert = function (db, jsonObj) {
     console.log('record inserted: ' + JSON.stringify(jsonObj));
   });
   
+  db.close();
 };
 
 
