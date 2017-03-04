@@ -38,7 +38,7 @@ ShortenUrl.encode = function (num) {
         encodedStr = characters[charIndex].toString() + encodedStr;    // add encodedStr char to encodedStr string
     }
     
-    console.log('encodedStr:'+encodedStr);
+    // console.log('encodedStr:'+encodedStr);
     return encodedStr;
 };
 

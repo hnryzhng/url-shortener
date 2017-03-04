@@ -19,7 +19,6 @@ app.get('/convert/:targeturl(*)', function (request, response, next) {
   // var shortenedurl = shortenurl.shorten(targeturl);
   // console.log('shorturl'+shortenedurl);
 
-  
   // connect to db
   mongo.connect(dburl, function(err, db) {
     if (err) {
@@ -27,40 +26,39 @@ app.get('/convert/:targeturl(*)', function (request, response, next) {
     } else {
       
       // grab current counter for unique id incremented from previous count
-      
-      var count = dbmethods.countUrl(db);
-      console.log('main count:'+ count);
-      // var shortenedurl = shortenurl.encode(count);
-      // console.log('shortenedurl:'+shortenedurl);
-      
-      var jsonObj = {
-        'original-url': targeturl,
-        'short-url': ''
-      };
-      
-      /*
-      var collection = db.collection('urls');
-      // response.end();
-      
-      // if url in db, then retrieve original url, and redirect; else, insert record into db
-      collection.find({'original-url': targeturl}).limit(1).toArray(function(err,documents){
-        if (err) {
-          throw err;
-        } else {
-          if (documents.length > 0) {
-            console.log("you've already shortened this url");
-            console.log(documents[0]);
-            db.close();
-          } else {
-            // insert into db if not in it
-            dbmethods.insert(db, jsonObj);
-            db.close();
-          }
-        }
+      dbmethods.countUrl(db, function callback(count){
+        // console.log('main count: '+ count);
+        var shortenedurl = shortenurl.encode(count);
+        // console.log('shortenedurl:'+shortenedurl);
+        var jsonObj = {
+          'original-url': targeturl,
+          'short-url': shortenedurl,
+          _id: count
+        };
+        console.log('jsonObj:'+JSON.stringify(jsonObj));
         
-        response.end();
-      });*/
-    }
+        // if url in urls collection, then retrieve original url, and redirect; else, shorten url and insert record into db
+        var collection = db.collection('urls');
+        
+        collection.find({'original-url': targeturl}).limit(1).toArray(function(err,documents){
+          if (err) {
+            throw err;
+          } else {
+            if (documents.length > 0) {
+              console.log("you've already shortened this url");
+              console.log(documents[0]);
+            } else {
+              // insert into db if not in it
+              dbmethods.insert(db, jsonObj);
+            }
+          }
+          db.close();
+          response.end('your shortened url:'+jsonObj['short-url']);
+          
+        });
+      });
+
+    } // close mongo.connect()
   });
 });
 
@@ -72,32 +70,41 @@ app.get('/:shortenedurl', function(request,response) {
   mongo.connect(dburl, function(err, db) {
     if (err) throw err;
     
-    // find shortenedurl in collection 'urls'
-    var collection = db.collection("urls");
-    
-    collection.find({"short-url": shortenedurl}).toArray(function(err, results){
-      if (err) {
-        throw err;
-      } else {
-        
-        // if short url record exists, redirect to original url
-        if (results.length == 0) {
-          console.log('this url does not exist');
-          db.close();
-        } else {
-          var originalUrl = results[0]["original-url"];
-          console.log(originalUrl);
-          console.log(results);
+    function findRedirect(callback){ // rename findAndRedirect(); need this for callback to response redirect using original url after using collection.find()
+      // find shortenedurl in collection 'urls'
+      var collection = db.collection("urls");
+      //var id = shortenurl.decode(shortenedurl);
+      //console.log('id'+id);
+      
+        collection.find({'short-url':shortenedurl}).limit(1).toArray(function(err, results){
+          if (err) {
+            throw err;
+          } else {
+            
+            // if short url record exists, redirect to original url
+            if (results.length == 0) {
+              console.log('this url does not exist');
+              
+            } else {
+              var originalUrl = results[0]['original-url'];
+              console.log('originalurl:'+originalUrl);
+              console.log('results:'+JSON.stringify(results));
+              return callback(originalUrl);
+            }
+          }
           db.close();
           
-        }
-      }
-      
-      response.redirect(301, originalUrl);
+        });
+    } // end findRedirect()
+    
+    // call findRedirect function
+    findRedirect(function callback(originalUrl){
+      console.log('origami: '+originalUrl);
+      response.redirect(originalUrl);
       response.end();
-      
     });
-  });
+
+  }); // close mongo.connect()
   
 });
 

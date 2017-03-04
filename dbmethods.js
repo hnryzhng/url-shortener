@@ -1,4 +1,4 @@
-// rename to dbmethods.js
+// DBMethods.JS
 
 var dbmethods = function () {};
 
@@ -15,9 +15,12 @@ dbmethods.insert = function (db, jsonObj) {
 
 };
 
-// CANNOT RETURN DATA TO PASS INTO SERVER.JS: http://stackoverflow.com/questions/35246713/node-js-mongo-find-and-return-data
+// LESSON: CANNOT RETURN DATA TO PASS INTO SERVER.JS: http://stackoverflow.com/questions/35246713/node-js-mongo-find-and-return-data
+// For ASYNC operations, simply returning data does not work. 
+// Use callbacks to return data at completion of data streaming instead because while data is loading, merely returning the data causes the entire program to 'block' while data loads, interrupting program
+// Reference: https://docs.nodejitsu.com/articles/getting-started/control-flow/what-are-callbacks/
 
-dbmethods.countUrl = function (db) {
+dbmethods.countUrl = function (db, callback) {
   
   var collection = db.collection('counters');  
   
@@ -38,7 +41,7 @@ dbmethods.countUrl = function (db) {
         });
         // console.log('count for after record insert'+record.count);
         var count = record.count;
-        db.close();
+        // db.close();
         return count;
       } else {
         // else increment counter by 1 and return it   
@@ -46,8 +49,8 @@ dbmethods.countUrl = function (db) {
         var count = results[0]["count"];
         console.log('results array:'+JSON.stringify(results[0]));
         // console.log('count for existing record:'+ count);
-        db.close();
-        return count;
+        // db.close();
+        return callback(count); // runs callback after all data is stre
         
       }
     }
