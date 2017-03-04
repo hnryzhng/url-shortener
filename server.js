@@ -5,6 +5,7 @@
 
 var http = require('http');
 var express = require('express');
+var url = require('url');
 var mongo = require('mongodb').MongoClient;
 var dbmethods = require('./dbmethods.js'); 
 var shortenurl = require('./shortenurl.js');
@@ -16,27 +17,24 @@ var dburl = 'mongodb://localhost:27017/urldb';
 app.get('/convert/:targeturl(*)', function (request, response, next) {
   
   var targeturl = request.params['targeturl'];
-  // var shortenedurl = shortenurl.shorten(targeturl);
-  // console.log('shorturl'+shortenedurl);
 
-  // connect to db
+  // VALIDATE URL FORMAT
+  var urlobj = url.parse(targeturl);
+  if (urlobj.host == null) {
+      console.log(Error('not a valid url'));
+      response.end('not a valid url');
+  } else {
+      targeturl = urlobj.href;
+  }
+
+  // CONNECT TO DB
   mongo.connect(dburl, function(err, db) {
     if (err) {
       throw err;
     } else {
       
       // grab current counter for unique id incremented from previous count
-      dbmethods.countUrl(db, function callback(count){
-        // console.log('main count: '+ count);
-        var shortenedurl = shortenurl.encode(count);
-        // console.log('shortenedurl:'+shortenedurl);
-        var jsonObj = {
-          'original-url': targeturl,
-          'short-url': shortenedurl,
-          _id: count
-        };
-        console.log('jsonObj:'+JSON.stringify(jsonObj));
-        
+      
         // if url in urls collection, then retrieve original url, and redirect; else, shorten url and insert record into db
         var collection = db.collection('urls');
         
@@ -48,14 +46,27 @@ app.get('/convert/:targeturl(*)', function (request, response, next) {
               console.log("you've already shortened this url");
               console.log(documents[0]);
             } else {
-              // insert into db if not in it
-              dbmethods.insert(db, jsonObj);
+              dbmethods.countUrl(db, function callback(count){
+                // console.log('main count: '+ count);
+                var shortenedurl = shortenurl.encode(count);
+                // console.log('shortenedurl:'+shortenedurl);
+                var jsonObj = {
+                  'original-url': targeturl,
+                  'short-url': shortenedurl,
+                  _id: count
+                };
+                console.log('jsonObj:'+JSON.stringify(jsonObj));
+                              
+                // insert into db if not in it
+                dbmethods.insert(db, jsonObj);
+                
+                db.close();
+                // response.end('your shortened url:'+request.url.host+'/'+jsonObj['short-url']);
+                response.end(request.url.host);
+              });
+
             }
           }
-          db.close();
-          response.end('your shortened url:'+jsonObj['short-url']);
-          
-        });
       });
 
     } // close mongo.connect()
@@ -67,10 +78,13 @@ app.get('/convert/:targeturl(*)', function (request, response, next) {
 app.get('/:shortenedurl', function(request,response) {
   var shortenedurl = request.params["shortenedurl"];
   
+  // CONNECT TO DB
   mongo.connect(dburl, function(err, db) {
     if (err) throw err;
     
-    function findRedirect(callback){ // rename findAndRedirect(); need this for callback to response redirect using original url after using collection.find()
+    // DEFINE findRedirect()
+    // need this for callback to response redirect using original url after using collection.find(), an async operation (ref: dbmethods.js)
+    function findRedirect(callback){ 
       // find shortenedurl in collection 'urls'
       var collection = db.collection("urls");
       //var id = shortenurl.decode(shortenedurl);
@@ -83,8 +97,7 @@ app.get('/:shortenedurl', function(request,response) {
             
             // if short url record exists, redirect to original url
             if (results.length == 0) {
-              console.log('this url does not exist');
-              
+              // console.log('this url does not exist');
             } else {
               var originalUrl = results[0]['original-url'];
               console.log('originalurl:'+originalUrl);
@@ -97,7 +110,7 @@ app.get('/:shortenedurl', function(request,response) {
         });
     } // end findRedirect()
     
-    // call findRedirect function
+    // CALL findRedirect()
     findRedirect(function callback(originalUrl){
       console.log('origami: '+originalUrl);
       response.redirect(originalUrl);
