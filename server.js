@@ -18,8 +18,8 @@ app.get('/convert/:targeturl(*)', function (request, response, next) {
   // VALIDATE URL FORMAT
   var urlobj = url.parse(targeturl);
   if (urlobj.host == null) {
-      console.log(Error('not a valid url'));
       response.end('not a valid url');
+      throw Error('not a valid url');
   } else {
       targeturl = urlobj.href;
   }
@@ -90,28 +90,25 @@ app.get('/:shortenedurl', function(request,response) {
     function findRedirect(callback){ 
       // find shortenedurl in collection 'urls'
       var collection = db.collection("urls");
-      //var id = shortenurl.decode(shortenedurl);
-      //console.log('id'+id);
       
-        collection.find({'short-url':shortenedurl}).limit(1).toArray(function(err, results){
-          if (err) {
-            throw err;
-          } else {
-            
-            // if short url record exists, redirect to original url
-            if (results.length == 0) {
-              // console.log('this url does not exist');
-              response.end('this url does not exist');
-            } else {
-              var originalUrl = results[0]['original-url'];
-              console.log('originalurl:'+originalUrl);
-              console.log('results:'+JSON.stringify(results));
-              return callback(originalUrl);
-            }
-          }
-          db.close();
+      collection.find({'short-url':shortenedurl}).limit(1).toArray(function(err, results){
+        if (err) {
+          throw err;
+        } else {
           
-        });
+          // if short url record exists, redirect to original url
+          if (results.length == 0) {
+            response.end('this url does not exist');
+          } else {
+            var originalUrl = results[0]['original-url'];
+            console.log('originalurl:'+originalUrl);
+            console.log('results:'+JSON.stringify(results));
+            return callback(originalUrl);
+          }
+        }
+        db.close();
+        
+      });
     } // end findRedirect()
     
     // CALL findRedirect()
