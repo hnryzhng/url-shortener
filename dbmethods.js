@@ -37,16 +37,16 @@ dbmethods.countUrl = function (db, callback) {
         };
         collection.insert(record, function(err,data){
           if (err) throw err;
-          console.log('url counter record inserted');
+          console.log('url counter record inserted:'+ JSON.stringify(record));
         });
         // console.log('count for after record insert'+record.count);
         var count = record.count;
         // db.close();
-        return count;
+        return callback(count);
       } else {
         // else increment counter by 1 and return it   
         collection.update({_id:'url_count'},{$inc: {count: +1}});
-        var count = results[0]["count"];
+        count = results[0]["count"];
         console.log('results array:'+JSON.stringify(results[0]));
         // console.log('count for existing record:'+ count);
         // db.close();

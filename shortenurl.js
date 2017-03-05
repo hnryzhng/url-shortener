@@ -15,6 +15,8 @@ ShortenUrl.shorten = function(targeturl) {
     return shortenedurl.toString();
 };
 
+// reference: https://coligo.io/create-url-shortener-with-node-express-mongo/
+
 ShortenUrl.encode = function (num) {
     
     // convert unique id counter into a shorter string for shortened url 
